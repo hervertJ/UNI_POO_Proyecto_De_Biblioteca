@@ -370,4 +370,3 @@ if __name__ == "__main__":
     prestamo.cambiar_estado(prestamo_vencido)
     prestamo.procesar_prestamo()
     print(f"Multa por retraso: ${prestamo.calcular_multa()}")
-
