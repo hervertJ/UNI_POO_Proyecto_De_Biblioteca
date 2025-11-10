@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Gestor Biblioteca</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+
+  <div class="user-bar">
+    <div class="user-info">
+      <span>¡Hola, <strong>{{ session.nombre }}</strong>! (Rol: {{ rol }})</span>
+    </div>
+    <div class="user-actions">
+      <a href="{{ url_for('perfil') }}" class="perfil-button">Mi Perfil</a>
+      <a href="/logout" class="logout-button">Cerrar Sesión</a>
+    </div>
+  </div>
+  
+  <!-- ============================================= -->
+  <!-- NUEVO: Panel de Simulación de Tiempo -->
+  <!-- ============================================= -->
+  <div class="time-debug-bar">
+    <div class="time-debug-info">
+      <span>Fecha Simulada: <strong>{{ fecha_actual_str }}</strong></span>
+      {% if offset_dias > 0 %}
+        <span class="time-offset-tag">(+{{ offset_dias }} días)</span>
+      {% endif %}
+    </div>
+    
+    <form action="{{ url_for('avanzar_tiempo') }}" method="POST" class="time-debug-form">
+      <select name="dias">
+        <option value="7">+ 7 Días</option>
+        <option value="15">+ 15 Días</option>
+        <option value="30">+ 30 Días</option>
+      </select>
+      <button type="submit">Avanzar Tiempo</button>
+    </form>
+    
+    {% if offset_dias > 0 %}
+    <form action="{{ url_for('reset_tiempo') }}" method="POST" class="time-debug-form time-debug-reset">
+      <button type="submit">Volver al Presente</button>
+    </form>
+    {% endif %}
+  </div>
+  <!-- ============================================= -->
+  <!-- FIN Panel de Simulación de Tiempo -->
+  <!-- ============================================= -->
+
+  <h1>Gestor de Biblioteca Universitaria</h1>
+
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+      {% for category, message in messages %}
+        <div class="flash-message {{ category }}">{{ message }}</div>
+      {% endfor %}
+    {% endif %}
+  {% endwith %}
+
+  <!-- ============================================= -->
+  <!-- Panel de Administrador -->
+  <!-- ============================================= -->
+  {% if rol == 'Administrativo' %}
+  <div class="admin-panel">
+    <div class="admin-header">
+      <h2>Panel de Administrador</h2>
+      <a href="{{ url_for('admin_dashboard') }}" class="admin-dashboard-link">
+        Ver Analíticas (Gráficos) &rarr;
+      </a>
+    </div>
+    <form action="{{ url_for('admin_agregar_material') }}" method="POST" class="admin-form">
+      <h3>Añadir Nuevo Material</h3>
+      <div class="form-row">
+        <input type="text" name="titulo" placeholder="Título" required>
+        <input type="text" name="autor" placeholder="Autor" required>
+      </div>
+      <div class="form-row">
+        <input type="number" name="año" placeholder="Año" value="{{ current_year }}">
+        <input type="number" name="unidades" placeholder="Unidades" value="1" min="1">
+        <select name="tipo_material">
+          <option value="libro">Libro</option>
+          <option value="revista">Revista</option>
+          <option value="tesis">Tesis</option>
+        </select>
+        <button type="submit" class="boton-agregar">+</button>
+      </div>
+    </form>
+  </div>
+  {% endif %}
+  <!-- ============================================= -->
+  <!-- Fin del Panel de Administrador -->
+  <!-- ============================================= -->
+
+
+  <div class="prestamos-container">
+    <h2>Mis Préstamos</h2>
+    
+    {% if total_multa > 0 %}
+      <h3 class="multa-total">
+        Multa total acumulada: ${{ "%.2f"|format(total_multa) }}
+      </h3>
+      
+      <form action="/pagar-multa" method="POST" class="form-pago">
+        <label for="metodo_pago">Simular pago de multa:</label>
+        <select name="metodo_pago" id="metodo_pago">
+          <option value="BCP">Pagar con BCP (Simulación)</option>
+          <option value="Scotiabank">Pagar con Scotiabank (Simulación)</option>
+          <option value="Yape">Pagar con Yape (Simulación)</option>
+        </select>
+        <button type="submit" class="boton-pagar">Pagar ${{ "%.2f"|format(total_multa) }}</button>
+      </form>
+      
+    {% else %}
+      <h3 class="multa-ok">Estás al día en tus pagos.</h3>
+    {% endif %}
+
+    <ul class="lista-prestamos">
+      {% for p in info_prestamos %}
+        {% if p.estado_obj.__class__.__name__ == 'PrestamoVencido' %}
+          <li class="item-vencido">
+            <strong>{{ p.titulo }}</strong>
+            <span class="estado-vencido">
+              Estado: VENCIDO ({{ p.estado_obj.dias_retraso }} días de retraso)
+            </span>
+            <span class="multa-item">
+              Multa por este ítem: ${{ "%.2f"|format(p.multa) }}
+            </span>
+        {% elif p.estado_obj.__class__.__name__ == 'PrestamoActivo' %}
+          <li class="item-activo">
+            <strong>{{ p.titulo }}</strong>
+            <span class="estado-activo">Estado: Activo</span>
+        {% elif p.estado_obj.__class__.__name__ == 'PrestamoDevuelto' %}
+          <li class="item-devuelto">
+            <strong>{{ p.titulo }}</strong>
+            <span class="estado-devuelto">Estado: Devuelto</span>
+        {% else %}
+          <li> <strong>{{ p.titulo }}</strong>
+            <span>Estado: {{ p.estado_obj.__class__.__name__ }}</span>
+        {% endif %}
+            <span class="fecha">
+              Préstamo: {{ p.fecha_prestamo.strftime('%d-%m-%Y') }} | 
+              Vence: {{ p.fecha_vencimiento.strftime('%d-%m-%Y') }}
+            </span>
+            
+            {% if p.es_activo and p.es_renovable %}
+              <form action="{{ url_for('renovar_prestamo', prestamo_id=p.id) }}" method="POST" class="form-renovar">
+                <button type"submit" class="boton-renovar">
+                  Renovar Préstamo
+                </button>
+              </form>
+            {% endif %}
+            
+          </li>
+      {% else %}
+        <li>No tienes préstamos activos.</li>
+      {% endfor %}
+    </ul>
+  </div>
+  
+  
+  <!-- ============================================= -->
+  <!-- BÚSQUEDA AVANZADA (MODIFICADO) -->
+  <!-- ============================================= -->
+  <form action="{{ url_for('buscar') }}" method="post" class="form-busqueda">
+      <input type="text" name="palabra" placeholder="Buscar por título..." value="{{ palabra or '' }}">
+      <input type="text" name="autor" placeholder="Buscar por autor..." value="{{ autor or '' }}">
+      <button type="submit">Buscar</button>
+  </form>
+
+  {% if palabra or autor %}
+    <h2>Resultados de la búsqueda:</h2>
+  {% else %}
+    <h2>Catálogo Completo:</h2>
+  {% endif %}
+  <!-- ============================================= -->
+
+  <ul class="lista-materiales">
+    {% for material in materiales %}
+      <li class="material-item">
+        
+        <a href="{{ url_for('detalle_material', material_id=material.id) }}" class="material-link">
+          <img src="{{ material.portada_url }}" alt="Portada" class="material-portada-mini">
+          <div class="material-info">
+            <strong>{{ material.titulo }}</strong>
+            <span> - {{ material.autor }} ({{ material.año_publicacion }})</span>
+            
+            {% if material.__class__.__name__ == 'MaterialDigital' %}
+              <span class="material-estado disponible">Siempre Disponible</span>
+            {% elif material.esta_disponible %}
+              <span class="material-estado disponible">
+                Disponible ({{ material.unidades_disponibles }}/{{ material.total_unidades }} unidades)
+              </span>
+            {% else %}
+              <span class="material-estado no-disponible">
+                No disponible (0/{{ material.total_unidades }} unidades)
+              </span>
+            {% endif %}
+          </div>
+        </a>
+        
+        {% if rol == 'Administrativo' %}
+          <form action="{{ url_for('admin_retirar_material', material_id=material.id) }}" method="POST" class="form-retirar">
+            <button type="submit" class="boton-retirar" title="Retirar material del catálogo">X</button>
+          </form>
+        {% endif %}
+        
+      </li>
+    {% else %}
+      <li class="no-resultados">No se encontraron resultados para tu búsqueda.</li>
+    {% endfor %}
+  </ul>
+
+</body>
+</html>

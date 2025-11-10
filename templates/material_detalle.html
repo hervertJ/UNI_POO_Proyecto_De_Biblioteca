@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Detalle - {{ material.titulo }}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body class="detalle-page">
+
+  <!-- NUEVO: Añadida la barra de usuario para consistencia -->
+  <div class="user-bar">
+    <div class="user-info">
+      <span>¡Hola, <strong>{{ session.nombre }}</strong>! (Rol: {{ session.rol }})</span>
+    </div>
+    <div class="user-actions">
+      <a href="{{ url_for('perfil') }}" class="perfil-button">Mi Perfil</a>
+      <a href="{{ url_for('logout') }}" class="logout-button">Cerrar Sesión</a>
+    </div>
+  </div>
+
+  <a href="{{ url_for('home') }}" class="back-button">&larr; Volver al catálogo</a>
+  
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+      {% for category, message in messages %}
+        <div class="flash-message {{ category }}">{{ message }}</div>
+      {% endfor %}
+    {% endif %}
+  {% endwith %}
+
+  <div class="detalle-container">
+    <div class="detalle-portada">
+      <img src="{{ material.portada_url }}" alt="Portada de {{ material.titulo }}">
+    </div>
+    <div class="detalle-info">
+      <h2>{{ material.titulo }}</h2>
+      <span class="detalle-autor">por {{ material.autor }}</span>
+      <span class="detalle-año">Publicado en {{ material.año_publicacion }}</span>
+      
+      <p class="detalle-descripcion">{{ material.descripcion }}</p>
+
+      <!-- Detalles específicos (usando propiedades públicas) -->
+      <div class="detalle-especificos">
+        {% if material.__class__.__name__ == 'Libro' %}
+          <span><strong>Tipo:</strong> Libro</span>
+          <span><strong>Editorial:</strong> {{ material.editorial }}</span>
+        {% elif material.__class__.__name__ == 'Revista' %}
+          <span><strong>Tipo:</strong> Revista</span>
+          <span><strong>Edición Nro:</strong> {{ material.numero_edicion }}</span>
+        {% elif material.__class__.__name__ == 'Tesis' %}
+          <span><strong>Tipo:</strong> Tesis</span>
+          <span><strong>Universidad:</strong> {{ material.universidad }}</span>
+        {% elif material.__class__.__name__ == 'MaterialDigital' %}
+          <span><strong>Tipo:</strong> Material Digital</span>
+          <span><strong>Formato:</strong> {{ material.formato }}</span>
+          <span class="material-estado disponible">Siempre Disponible</span>
+        {% endif %}
+
+        {% if material.isbn %}
+          <span><strong>ISBN:</strong> {{ material.isbn }}</span>
+        {% endif %}
+        {% if material.issn %}
+          <span><strong>ISSN:</strong> {{ material.issn }}</span>
+        {% endif %}
+  
+        {% if material.__class__.__name__ != 'MaterialDigital' %}
+          <span class="detalle-unidades">
+            <strong>Unidades:</strong> 
+            {{ material.unidades_disponibles }} de {{ material.total_unidades }} disponibles
+          </span>
+        {% endif %}
+      </div>
+
+      <!-- Formularios de Acción -->
+      <div class="form-prestamo">
+        
+        <form action="{{ url_for('prestar_material', material_id=material.id) }}" method="POST">
+          <button type="submit" class="boton-prestar" {% if not puede_prestar %}disabled{% endif %}>
+            Solicitar Préstamo
+          </button>
+        </form>
+        
+        {% if not puede_prestar and razon %}
+          <p class="razon-no-prestamo">{{ razon }}</p>
+        {% endif %}
+        
+        {% if mostrar_reserva %}
+          <form action="{{ url_for('reservar_material', material_id=material.id) }}" method="POST">
+            <button type="submit" class="boton-reservar">
+              Reservar este ítem
+            </button>
+          </form>
+        {% endif %}
+        
+      </div>
+      
+      <!-- ================================================== -->
+      <!-- NUEVO: Sección de Recomendaciones (ML)             -->
+      <!-- ================================================== -->
+      {% if recomendaciones %}
+      <div class="recomendaciones-container">
+        <h3>También te podría interesar</h3>
+        <ul class="lista-materiales-mini">
+          {% for mat in recomendaciones %}
+          <li class="material-item-mini">
+            <a href="{{ url_for('detalle_material', material_id=mat.id) }}">
+              <img src="{{ mat.portada_url }}" alt="Portada" class="material-portada-super-mini">
+              <div class="material-info-mini">
+                <strong>{{ mat.titulo }}</strong>
+                <span>{{ mat.autor }}</span>
+              </div>
+            </a>
+          </li>
+          {% endfor %}
+        </ul>
+      </div>
+      {% endif %}
+      <!-- ================================================== -->
+      <!-- FIN: Sección de Recomendaciones                    -->
+      <!-- ================================================== -->
+      
+    </div>
+  </div>
+
+</body>
+</html>

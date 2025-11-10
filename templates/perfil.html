@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Mi Perfil</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body class="detalle-page">
+
+  <!-- Barra de Usuario -->
+  <div class="user-bar">
+    <div class="user-info">
+      <span>¡Hola, <strong>{{ session.nombre }}</strong>! (Rol: {{ session.rol }})</span>
+    </div>
+    <div class="user-actions">
+      <a href="{{ url_for('perfil') }}" class="perfil-button">Mi Perfil</a>
+      <a href="{{ url_for('logout') }}" class="logout-button">Cerrar Sesión</a>
+    </div>
+  </div>
+
+  <a href="{{ url_for('home') }}" class="back-button">&larr; Volver al catálogo</a>
+
+  <div class="perfil-container">
+    <h2>Mi Perfil</h2>
+    
+    <div class="perfil-card">
+      <h3>{{ usuario.nombre }}</h3>
+      
+      <div class="perfil-info">
+        <span><strong>ID de Usuario:</strong> {{ usuario.id }}</span>
+        <span><strong>Correo:</strong> {{ usuario.correo }}</span>
+        <span><strong>Rol:</strong> {{ usuario.rol }}</span>
+      </div>
+
+      <!-- Detalles específicos del Rol -->
+      <div class="perfil-detalles-rol">
+        {% if usuario.rol == 'Estudiante' %}
+          <h4>Detalles de Estudiante</h4>
+          <span><strong>Carrera:</strong> {{ usuario.carrera }}</span>
+          <span><strong>Semestre:</strong> {{ usuario.semestre }}</span>
+        
+        {% elif usuario.rol == 'Profesor' %}
+          <h4>Detalles de Profesor</h4>
+          <span><strong>Departamento:</strong> {{ usuario.departamento }}</span>
+          <span><strong>Contrato:</strong> {{ usuario.tipo_contrato }}</span>
+
+        {% elif usuario.rol == 'Administrativo' %}
+          <h4>Detalles de Administrativo</h4>
+          <span><strong>Área:</strong> {{ usuario.area_trabajo }}</span>
+        
+        {% endif %}
+      </div>
+      
+    </div>
+  </div>
+
+</body>
+</html>
