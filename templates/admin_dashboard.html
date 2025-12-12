@@ -2,41 +2,321 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8">
-  <title>Dashboard de Administrador</title>
+  <title>Admin Panel</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  <style>
+      .form-admin-grid {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 20px;
+          margin-bottom: 20px;
+      }
+      .full-width { grid-column: span 2; }
+      .hidden-field { display: none; }
+      
+      /* Estilos para Tablas de Gestión */
+      .admin-table-container {
+          overflow-x: auto;
+          margin-bottom: 30px;
+      }
+      .admin-table {
+          width: 100%;
+          border-collapse: collapse;
+          font-size: 0.9em;
+      }
+      .admin-table th {
+          background-color: rgba(255,255,255,0.05);
+          color: #fff;
+          padding: 12px;
+          text-align: left;
+          border-bottom: 2px solid var(--border-color);
+      }
+      .admin-table td {
+          padding: 12px;
+          border-bottom: 1px solid var(--border-color);
+          color: var(--text-muted);
+      }
+      .admin-table tr:hover td {
+          background-color: rgba(255,255,255,0.02);
+      }
+      .status-badge {
+          padding: 4px 8px;
+          border-radius: 4px;
+          font-weight: bold;
+          font-size: 0.85em;
+      }
+      .badge-ok { background: rgba(46, 160, 67, 0.15); color: #2ea043; border: 1px solid #2ea043; }
+      .badge-danger { background: rgba(215, 58, 73, 0.15); color: #ff7b72; border: 1px solid #ff7b72; }
+      .badge-queue { background: rgba(210, 153, 34, 0.15); color: #d29922; border: 1px solid #d29922; }
+
+      .queue-list {
+          margin: 0;
+          padding-left: 20px;
+      }
+  </style>
 </head>
-<body class="detalle-page"> <!-- Reutilizamos estilos de la página de detalle -->
-
-  <!-- Barra de Usuario -->
-  <div class="user-bar">
-    <div class="user-info">
-      <span>¡Hola, <strong>{{ session.nombre }}</strong>! (Rol: {{ session.rol }})</span>
-    </div>
-    <div class="user-actions">
-      <a href="{{ url_for('perfil') }}" class="perfil-button">Mi Perfil</a>
-      <a href="{{ url_for('logout') }}" class="logout-button">Cerrar Sesión</a>
-    </div>
-  </div>
-
-  <a href="{{ url_for('home') }}" class="back-button">&larr; Volver al panel principal</a>
-
-  <div class="perfil-container"> <!-- Reutilizamos el contenedor de perfil -->
-    <h2>Panel de Analíticas</h2>
+<body>
+  <div class="app-wrapper">
     
-    <div class="admin-dashboard-container">
-      
-      <div class="plot-container">
-        <h3>Popularidad por Tipo de Material</h3>
-        <img src="{{ plot_url_barras }}" alt="Gráfico de barras de préstamos por tipo">
+    <nav class="sidebar">
+      <div class="sidebar-header">
+        <span class="brand-icon">🏛️</span>
+        <span class="brand-title">INTRALU</span>
+        <span class="menu-icon">≡</span>
       </div>
-      
-      <div class="plot-container">
-        <h3>Estado Actual de Préstamos</h3>
-        <img src="{{ plot_url_pie }}" alt="Gráfico de pastel de estados de préstamos">
+
+      <ul class="nav-links">
+        <a href="{{ url_for('home', view='catalogo') }}" class="nav-item">
+          <div class="nav-icon">🔍</div> <span>Catálogo</span>
+        </a>
+        <div class="nav-item active">
+          <div class="nav-icon">📊</div> <span>Admin Panel</span>
+        </div>
+      </ul>
+
+      <div class="sidebar-footer">
+        <div class="user-profile-card">
+            <div class="avatar-circle">{{ session.nombre[0] }}</div>
+            <div class="user-details">
+                <span class="user-name">{{ session.nombre.split(' ')[0] }}</span>
+                <span class="user-role">{{ session.rol }}</span>
+            </div>
+        </div>
+        <a href="{{ url_for('perfil') }}" class="footer-link link-profile">
+            <div class="footer-icon">👤</div> <span>Mi Perfil</span>
+        </a>
+        <a href="{{ url_for('logout') }}" class="footer-link link-logout">
+            <div class="footer-icon">🚪</div> <span>Cerrar Sesión</span>
+        </a>
       </div>
-      
-    </div>
+    </nav>
+
+    <main class="main-content">
+       <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+           <h2 style="margin:0; border:none;">Panel de Administración</h2>
+           <a href="{{ url_for('home') }}" class="btn-secondary">&larr; Volver al Catálogo</a>
+       </div>
+       
+       {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+          {% for category, message in messages %}
+            <div class="flash-message {{ category }}">{{ message }}</div>
+          {% endfor %}
+        {% endif %}
+      {% endwith %}
+
+      <!-- NAVEGACIÓN DE TABS -->
+      <div class="admin-tabs">
+          <button class="admin-tab-button active" onclick="showTab('gestion')">Gestión de Préstamos y Colas</button>
+          <button class="admin-tab-button" onclick="showTab('inventario')">Agregar Inventario</button>
+          <button class="admin-tab-button" onclick="showTab('analiticas')">Analíticas y Gráficos</button>
+      </div>
+
+      <!-- SECCIÓN 1: GESTIÓN (PRÉSTAMOS Y COLAS) -->
+      <div id="tab-gestion" class="admin-tab-content active">
+          
+          <!-- Tabla de Colas -->
+          <div class="admin-card">
+              <h3 style="color:#d29922; border-bottom:1px solid var(--border-color); padding-bottom:10px;">⏳ Monitor de Colas de Espera</h3>
+              {% if materiales_con_cola %}
+              <div class="admin-table-container">
+                  <table class="admin-table">
+                      <thead>
+                          <tr>
+                              <th>Material Solicitado</th>
+                              <th>Total en Espera</th>
+                              <th>Usuarios en Cola (Ordenados)</th>
+                          </tr>
+                      </thead>
+                      <tbody>
+                          {% for mat in materiales_con_cola %}
+                          <tr>
+                              <td>
+                                  <strong>{{ mat.titulo }}</strong><br>
+                                  <small>{{ mat.materia }} • {{ mat.__class__.__name__ }}</small>
+                              </td>
+                              <td><span class="status-badge badge-queue">{{ mat.lista_reservas|length }} personas</span></td>
+                              <td>
+                                  <ol class="queue-list">
+                                      {% for u in mat.lista_reservas %}
+                                      <li>
+                                          <span style="color:#fff">{{ u.nombre }}</span> 
+                                          <span style="color:#8b949e">({{ u.rol }})</span>
+                                      </li>
+                                      {% endfor %}
+                                  </ol>
+                              </td>
+                          </tr>
+                          {% endfor %}
+                      </tbody>
+                  </table>
+              </div>
+              {% else %}
+              <p style="text-align:center; padding:20px; color:var(--text-muted);">No hay colas de reserva activas en este momento.</p>
+              {% endif %}
+          </div>
+
+          <!-- Tabla de Préstamos Activos -->
+          <div class="admin-card">
+              <h3 style="color:#58a6ff; border-bottom:1px solid var(--border-color); padding-bottom:10px;">📖 Control Global de Préstamos Activos</h3>
+              {% if global_prestamos %}
+              <div class="admin-table-container">
+                  <table class="admin-table">
+                      <thead>
+                          <tr>
+                              <th>Usuario</th>
+                              <th>Material</th>
+                              <th>Vencimiento</th>
+                              <th>Estado</th>
+                              <th>Multa Acumulada</th>
+                          </tr>
+                      </thead>
+                      <tbody>
+                          {% for p in global_prestamos %}
+                          <tr>
+                              <td>
+                                  <strong>{{ p.usuario.nombre }}</strong><br>
+                                  <small>{{ p.usuario.rol }}</small>
+                              </td>
+                              <td>
+                                  {{ p.material.titulo }}<br>
+                                  <small style="color:#8b949e">ID: {{ p.material.id }}</small>
+                              </td>
+                              <td>{{ p.fecha_vencimiento.strftime('%d-%m-%Y') }}</td>
+                              <td>
+                                  {% if p.estado_str == 'Activo' %}
+                                      <span class="status-badge badge-ok">Al día</span>
+                                  {% else %}
+                                      <span class="status-badge badge-danger">Vencido (+{{ p.dias_retraso }} días)</span>
+                                  {% endif %}
+                              </td>
+                              <td>
+                                  {% if p.multa > 0 %}
+                                      <span style="color:#ff7b72; font-weight:bold;">${{ "%.2f"|format(p.multa) }}</span>
+                                  {% else %}
+                                      -
+                                  {% endif %}
+                              </td>
+                          </tr>
+                          {% endfor %}
+                      </tbody>
+                  </table>
+              </div>
+              {% else %}
+              <p style="text-align:center; padding:20px; color:var(--text-muted);">No hay préstamos activos en el sistema.</p>
+              {% endif %}
+          </div>
+      </div>
+
+      <!-- SECCIÓN 2: INVENTARIO (AGREGAR) -->
+      <div id="tab-inventario" class="admin-tab-content">
+          <div class="admin-card">
+               <h3 style="border-bottom:1px solid var(--border-color); padding-bottom:10px; margin-bottom:20px;">Agregar Nuevo Material al Catálogo</h3>
+               <form action="{{ url_for('admin_agregar_material') }}" method="POST">
+                   <div class="form-admin-grid">
+                       <div>
+                           <label>Tipo de Material</label>
+                           <select name="tipo_material" id="tipoSelector" onchange="toggleFields()">
+                               <option value="libro">Libro</option>
+                               <option value="revista">Revista</option>
+                               <option value="tesis">Tesis</option>
+                               <option value="digital">Material Digital (Ebook)</option>
+                           </select>
+                       </div>
+                       
+                       <div><label>Título</label><input type="text" name="titulo" required placeholder="Ej. Cálculo I"></div>
+                       <div><label>Autor</label><input type="text" name="autor" required placeholder="Ej. Juan Pérez"></div>
+                       <div><label>Materia/Asignatura</label><input type="text" name="materia" required placeholder="Ej. Matemáticas..."></div>
+                       <div><label>Año</label><input type="number" name="año" value="2024"></div>
+                       <div class="full-width"><label>Descripción</label><input type="text" name="descripcion" placeholder="Descripción..."></div>
+                       <div class="full-width"><label>URL Portada</label><input type="text" name="portada_url" placeholder="https://..."></div>
+
+                       <!-- CAMPOS ESPECIFICOS -->
+                       <div id="campo-libro-editorial" class="specific-field"><label>Editorial</label><input type="text" name="editorial"></div>
+                       <div id="campo-libro-isbn" class="specific-field"><label>ISBN</label><input type="text" name="isbn"></div>
+                       
+                       <div id="campo-revista-issn" class="specific-field hidden-field"><label>ISSN</label><input type="text" name="issn"></div>
+                       <div id="campo-revista-edicion" class="specific-field hidden-field"><label>Nº Edición</label><input type="number" name="numero_edicion"></div>
+
+                       <div id="campo-tesis-uni" class="specific-field hidden-field"><label>Universidad</label><input type="text" name="universidad"></div>
+
+                       <div id="campo-digital-formato" class="specific-field hidden-field">
+                           <label>Formato</label>
+                           <select name="formato"><option value="PDF">PDF</option><option value="EPUB">EPUB</option></select>
+                       </div>
+                       
+                       <div id="campo-unidades"><label>Unidades</label><input type="number" name="unidades" value="1" min="1"></div>
+                   </div>
+                   <button type="submit" class="btn-success">Guardar Material</button>
+               </form>
+           </div>
+      </div>
+
+      <!-- SECCIÓN 3: ANALÍTICAS -->
+      <div id="tab-analiticas" class="admin-tab-content">
+           {% if plot_url_barras %}
+           <div class="admin-dashboard-container">
+              <div class="plot-container">
+                 <h3>Popularidad por Tipo</h3>
+                 <img src="{{ plot_url_barras }}" style="width:100%; border-radius:6px;">
+              </div>
+              <div class="plot-container">
+                 <h3>Estado de Préstamos</h3>
+                 <img src="{{ plot_url_pie }}" style="width:100%; border-radius:6px;">
+              </div>
+           </div>
+           {% else %}
+           <div class="admin-card">
+               <p style="color:var(--text-muted); font-style:italic;">No hay suficientes datos para generar gráficos aún.</p>
+           </div>
+           {% endif %}
+      </div>
+
+    </main>
   </div>
 
+  <script>
+      // Lógica de Tabs
+      function showTab(tabId) {
+          // Ocultar todos los contenidos
+          document.querySelectorAll('.admin-tab-content').forEach(el => el.classList.remove('active'));
+          // Desactivar todos los botones
+          document.querySelectorAll('.admin-tab-button').forEach(el => el.classList.remove('active'));
+          
+          // Activar el seleccionado
+          document.getElementById('tab-' + tabId).classList.add('active');
+          // Encontrar el botón que llamó a esto (truco simple: por texto o index, aquí buscamos por onclick)
+          // Para simplificar, iteramos botones y vemos cual tiene el onclick correcto
+          const buttons = document.querySelectorAll('.admin-tab-button');
+          if(tabId === 'gestion') buttons[0].classList.add('active');
+          if(tabId === 'inventario') buttons[1].classList.add('active');
+          if(tabId === 'analiticas') buttons[2].classList.add('active');
+      }
+
+      function toggleFields() {
+          const tipo = document.getElementById('tipoSelector').value;
+          document.querySelectorAll('.specific-field').forEach(el => el.classList.add('hidden-field'));
+          
+          if(tipo === 'libro') {
+              document.getElementById('campo-libro-editorial').classList.remove('hidden-field');
+              document.getElementById('campo-libro-isbn').classList.remove('hidden-field');
+              document.getElementById('campo-unidades').classList.remove('hidden-field');
+          }
+          else if(tipo === 'revista') {
+              document.getElementById('campo-revista-issn').classList.remove('hidden-field');
+              document.getElementById('campo-revista-edicion').classList.remove('hidden-field');
+              document.getElementById('campo-unidades').classList.remove('hidden-field');
+          }
+          else if(tipo === 'tesis') {
+              document.getElementById('campo-tesis-uni').classList.remove('hidden-field');
+              document.getElementById('campo-unidades').classList.remove('hidden-field');
+          }
+          else if(tipo === 'digital') {
+              document.getElementById('campo-digital-formato').classList.remove('hidden-field');
+              document.getElementById('campo-unidades').classList.add('hidden-field'); 
+          }
+      }
+      document.addEventListener('DOMContentLoaded', toggleFields);
+  </script>
 </body>
 </html>

@@ -2,213 +2,444 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8">
-  <title>Gestor Biblioteca</title>
+  <title>Intralu | Dashboard</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
 
-  <div class="user-bar">
-    <div class="user-info">
-      <span>¡Hola, <strong>{{ session.nombre }}</strong>! (Rol: {{ rol }})</span>
-    </div>
-    <div class="user-actions">
-      <a href="{{ url_for('perfil') }}" class="perfil-button">Mi Perfil</a>
-      <a href="/logout" class="logout-button">Cerrar Sesión</a>
-    </div>
-  </div>
-  
-  <!-- ============================================= -->
-  <!-- NUEVO: Panel de Simulación de Tiempo -->
-  <!-- ============================================= -->
-  <div class="time-debug-bar">
-    <div class="time-debug-info">
-      <span>Fecha Simulada: <strong>{{ fecha_actual_str }}</strong></span>
-      {% if offset_dias > 0 %}
-        <span class="time-offset-tag">(+{{ offset_dias }} días)</span>
-      {% endif %}
-    </div>
+  <div class="app-wrapper">
     
-    <form action="{{ url_for('avanzar_tiempo') }}" method="POST" class="time-debug-form">
-      <select name="dias">
-        <option value="7">+ 7 Días</option>
-        <option value="15">+ 15 Días</option>
-        <option value="30">+ 30 Días</option>
-      </select>
-      <button type="submit">Avanzar Tiempo</button>
-    </form>
-    
-    {% if offset_dias > 0 %}
-    <form action="{{ url_for('reset_tiempo') }}" method="POST" class="time-debug-form time-debug-reset">
-      <button type="submit">Volver al Presente</button>
-    </form>
-    {% endif %}
-  </div>
-  <!-- ============================================= -->
-  <!-- FIN Panel de Simulación de Tiempo -->
-  <!-- ============================================= -->
-
-  <h1>Gestor de Biblioteca Universitaria</h1>
-
-  {% with messages = get_flashed_messages(with_categories=true) %}
-    {% if messages %}
-      {% for category, message in messages %}
-        <div class="flash-message {{ category }}">{{ message }}</div>
-      {% endfor %}
-    {% endif %}
-  {% endwith %}
-
-  <!-- ============================================= -->
-  <!-- Panel de Administrador -->
-  <!-- ============================================= -->
-  {% if rol == 'Administrativo' %}
-  <div class="admin-panel">
-    <div class="admin-header">
-      <h2>Panel de Administrador</h2>
-      <a href="{{ url_for('admin_dashboard') }}" class="admin-dashboard-link">
-        Ver Analíticas (Gráficos) &rarr;
-      </a>
-    </div>
-    <form action="{{ url_for('admin_agregar_material') }}" method="POST" class="admin-form">
-      <h3>Añadir Nuevo Material</h3>
-      <div class="form-row">
-        <input type="text" name="titulo" placeholder="Título" required>
-        <input type="text" name="autor" placeholder="Autor" required>
+    <!-- SIDEBAR -->
+    <nav class="sidebar" id="mainSidebar">
+      <div class="sidebar-header">
+        <span class="brand-icon">🏛️</span>
+        <span class="brand-title">INTRALU</span>
+        <span class="menu-icon" id="sidebarToggle">≡</span>
       </div>
-      <div class="form-row">
-        <input type="number" name="año" placeholder="Año" value="{{ current_year }}">
-        <input type="number" name="unidades" placeholder="Unidades" value="1" min="1">
-        <select name="tipo_material">
-          <option value="libro">Libro</option>
-          <option value="revista">Revista</option>
-          <option value="tesis">Tesis</option>
-        </select>
-        <button type="submit" class="boton-agregar">+</button>
-      </div>
-    </form>
-  </div>
-  {% endif %}
-  <!-- ============================================= -->
-  <!-- Fin del Panel de Administrador -->
-  <!-- ============================================= -->
 
-
-  <div class="prestamos-container">
-    <h2>Mis Préstamos</h2>
-    
-    {% if total_multa > 0 %}
-      <h3 class="multa-total">
-        Multa total acumulada: ${{ "%.2f"|format(total_multa) }}
-      </h3>
-      
-      <form action="/pagar-multa" method="POST" class="form-pago">
-        <label for="metodo_pago">Simular pago de multa:</label>
-        <select name="metodo_pago" id="metodo_pago">
-          <option value="BCP">Pagar con BCP (Simulación)</option>
-          <option value="Scotiabank">Pagar con Scotiabank (Simulación)</option>
-          <option value="Yape">Pagar con Yape (Simulación)</option>
-        </select>
-        <button type="submit" class="boton-pagar">Pagar ${{ "%.2f"|format(total_multa) }}</button>
-      </form>
-      
-    {% else %}
-      <h3 class="multa-ok">Estás al día en tus pagos.</h3>
-    {% endif %}
-
-    <ul class="lista-prestamos">
-      {% for p in info_prestamos %}
-        {% if p.estado_obj.__class__.__name__ == 'PrestamoVencido' %}
-          <li class="item-vencido">
-            <strong>{{ p.titulo }}</strong>
-            <span class="estado-vencido">
-              Estado: VENCIDO ({{ p.estado_obj.dias_retraso }} días de retraso)
-            </span>
-            <span class="multa-item">
-              Multa por este ítem: ${{ "%.2f"|format(p.multa) }}
-            </span>
-        {% elif p.estado_obj.__class__.__name__ == 'PrestamoActivo' %}
-          <li class="item-activo">
-            <strong>{{ p.titulo }}</strong>
-            <span class="estado-activo">Estado: Activo</span>
-        {% elif p.estado_obj.__class__.__name__ == 'PrestamoDevuelto' %}
-          <li class="item-devuelto">
-            <strong>{{ p.titulo }}</strong>
-            <span class="estado-devuelto">Estado: Devuelto</span>
-        {% else %}
-          <li> <strong>{{ p.titulo }}</strong>
-            <span>Estado: {{ p.estado_obj.__class__.__name__ }}</span>
-        {% endif %}
-            <span class="fecha">
-              Préstamo: {{ p.fecha_prestamo.strftime('%d-%m-%Y') }} | 
-              Vence: {{ p.fecha_vencimiento.strftime('%d-%m-%Y') }}
-            </span>
-            
-            {% if p.es_activo and p.es_renovable %}
-              <form action="{{ url_for('renovar_prestamo', prestamo_id=p.id) }}" method="POST" class="form-renovar">
-                <button type"submit" class="boton-renovar">
-                  Renovar Préstamo
-                </button>
-              </form>
-            {% endif %}
-            
-          </li>
-      {% else %}
-        <li>No tienes préstamos activos.</li>
-      {% endfor %}
-    </ul>
-  </div>
-  
-  
-  <!-- ============================================= -->
-  <!-- BÚSQUEDA AVANZADA (MODIFICADO) -->
-  <!-- ============================================= -->
-  <form action="{{ url_for('buscar') }}" method="post" class="form-busqueda">
-      <input type="text" name="palabra" placeholder="Buscar por título..." value="{{ palabra or '' }}">
-      <input type="text" name="autor" placeholder="Buscar por autor..." value="{{ autor or '' }}">
-      <button type="submit">Buscar</button>
-  </form>
-
-  {% if palabra or autor %}
-    <h2>Resultados de la búsqueda:</h2>
-  {% else %}
-    <h2>Catálogo Completo:</h2>
-  {% endif %}
-  <!-- ============================================= -->
-
-  <ul class="lista-materiales">
-    {% for material in materiales %}
-      <li class="material-item">
-        
-        <a href="{{ url_for('detalle_material', material_id=material.id) }}" class="material-link">
-          <img src="{{ material.portada_url }}" alt="Portada" class="material-portada-mini">
-          <div class="material-info">
-            <strong>{{ material.titulo }}</strong>
-            <span> - {{ material.autor }} ({{ material.año_publicacion }})</span>
-            
-            {% if material.__class__.__name__ == 'MaterialDigital' %}
-              <span class="material-estado disponible">Siempre Disponible</span>
-            {% elif material.esta_disponible %}
-              <span class="material-estado disponible">
-                Disponible ({{ material.unidades_disponibles }}/{{ material.total_unidades }} unidades)
-              </span>
-            {% else %}
-              <span class="material-estado no-disponible">
-                No disponible (0/{{ material.total_unidades }} unidades)
-              </span>
-            {% endif %}
-          </div>
+      <ul class="nav-links">
+        <a href="{{ url_for('home', view='catalogo') }}" class="nav-item" id="nav-catalogo">
+          <div class="nav-icon">🔍</div> <span class="nav-text">Catálogo</span>
+        </a>
+        <a href="{{ url_for('home', view='prestamos') }}" class="nav-item" id="nav-prestamos">
+          <div class="nav-icon">📚</div> <span class="nav-text">Préstamos</span>
+          {% if total_multa > 0 %}
+            <div class="notification-dot"></div>
+          {% endif %}
         </a>
         
         {% if rol == 'Administrativo' %}
-          <form action="{{ url_for('admin_retirar_material', material_id=material.id) }}" method="POST" class="form-retirar">
-            <button type="submit" class="boton-retirar" title="Retirar material del catálogo">X</button>
-          </form>
+        <a href="{{ url_for('home', view='admin') }}" class="nav-item" id="nav-admin">
+          <div class="nav-icon">📊</div> <span class="nav-text">Admin</span>
+        </a>
         {% endif %}
         
-      </li>
-    {% else %}
-      <li class="no-resultados">No se encontraron resultados para tu búsqueda.</li>
-    {% endfor %}
-  </ul>
+        <a href="{{ url_for('home', view='tiempo') }}" class="nav-item" id="nav-tiempo">
+          <div class="nav-icon">⏱️</div> <span class="nav-text">Simulación</span>
+        </a>
+      </ul>
 
+      <div class="sidebar-footer">
+        <div class="user-profile-card">
+            <div class="avatar-circle">{{ session.nombre[0] }}</div>
+            <div class="user-details">
+                <span class="user-name">{{ session.nombre.split(' ')[0] }}</span>
+                <span class="user-role">{{ session.rol }}</span>
+            </div>
+        </div>
+        <a href="{{ url_for('home', view='perfil') }}" class="nav-item footer-link link-profile" id="nav-perfil">
+            <div class="footer-icon">👤</div> <span>Mi Perfil</span>
+        </a>
+        <a href="{{ url_for('logout') }}" class="footer-link link-logout">
+            <div class="footer-icon">🚪</div> <span>Cerrar Sesión</span>
+        </a>
+      </div>
+    </nav>
+
+    <!-- MAIN -->
+    <main class="main-content">
+      
+      {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+          {% for category, message in messages %}
+            <div class="flash-message {{ category }}">{{ message }}</div>
+          {% endfor %}
+        {% endif %}
+      {% endwith %}
+
+      <!-- VISTA 1: CATÁLOGO -->
+      <div id="vista-catalogo" class="view-section">
+        <h2>Catálogo y Búsqueda</h2>
+        
+        <form action="{{ url_for('buscar') }}" method="post" class="search-bar-container">
+            <div class="search-inputs">
+                <input type="text" name="palabra" placeholder="Título..." value="{{ palabra or '' }}" style="flex:2;">
+                <input type="text" name="autor" placeholder="Autor..." value="{{ autor or '' }}" style="flex:1;">
+            </div>
+            <div class="search-filters" style="display:flex; gap:10px; margin-top:10px;">
+                <select name="tipo_material" style="flex:1;">
+                    <option value="Todos">Todos los Tipos</option>
+                    <option value="Libro" {% if filtros_activos and filtros_activos.tipo == 'Libro' %}selected{% endif %}>Libros</option>
+                    <option value="Revista" {% if filtros_activos and filtros_activos.tipo == 'Revista' %}selected{% endif %}>Revistas</option>
+                    <option value="Tesis" {% if filtros_activos and filtros_activos.tipo == 'Tesis' %}selected{% endif %}>Tesis</option>
+                    <option value="MaterialDigital" {% if filtros_activos and filtros_activos.tipo == 'MaterialDigital' %}selected{% endif %}>Digital</option>
+                </select>
+                <select name="materia" style="flex:1;">
+                    <option value="Todas">Todas las Materias</option>
+                    {% for m in materias_disponibles %}
+                        <option value="{{ m }}" {% if filtros_activos and filtros_activos.materia == m %}selected{% endif %}>{{ m }}</option>
+                    {% endfor %}
+                </select>
+                <button type="submit" class="btn-primary" style="flex:0.5;">Filtrar</button>
+            </div>
+        </form>
+
+        <hr style="border:0; border-top:1px solid var(--border-color); margin:20px 0;">
+
+        <!-- SECCIONES DESTACADAS -->
+        {% if populares and not palabra and not autor and not filtros_activos.tipo and not filtros_activos.materia %}
+        
+        <div class="featured-section">
+            <h3 style="color:#e6edf3; display:flex; align-items:center; gap:10px;">
+                🔥 Lo más popular (Tendencias)
+            </h3>
+            <div class="horizontal-scroll">
+                {% for material in populares %}
+                <div class="material-card featured-card">
+                    <a href="{{ url_for('detalle_material', material_id=material.id) }}" class="material-card-link">
+                        <div style="position:relative;">
+                            <img src="{{ material.portada_url }}" class="card-img" alt="Portada">
+                            <span class="badge-overlay badge-materia">{{ material.materia }}</span>
+                        </div>
+                        <div class="card-body">
+                            <div class="card-title">{{ material.titulo }}</div>
+                            <div class="card-footer">
+                                <span style="color:#d29922">★ {{ material.promedio_calificacion }}</span>
+                            </div>
+                        </div>
+                    </a>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+
+        {% if mejor_valorados %}
+        <div class="featured-section" style="margin-top:30px;">
+            <h3 style="color:#e6edf3; display:flex; align-items:center; gap:10px;">
+                ⭐ Mejor Valorados por la Comunidad
+            </h3>
+            <div class="horizontal-scroll">
+                {% for material in mejor_valorados %}
+                <div class="material-card featured-card">
+                    <a href="{{ url_for('detalle_material', material_id=material.id) }}" class="material-card-link">
+                        <div style="position:relative;">
+                            <img src="{{ material.portada_url }}" class="card-img" alt="Portada">
+                            <span class="badge-overlay badge-materia">{{ material.materia }}</span>
+                        </div>
+                        <div class="card-body">
+                            <div class="card-title">{{ material.titulo }}</div>
+                            <div class="card-footer">
+                                <span style="color:#e3b341; font-weight:bold;">★ {{ material.promedio_calificacion }}</span>
+                            </div>
+                        </div>
+                    </a>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+
+        <h3 style="margin-top:40px; border-bottom:1px solid var(--border-color); padding-bottom:10px;">Catálogo Completo</h3>
+        {% endif %}
+
+        <ul class="lista-materiales-grid">
+          {% for material in materiales %}
+            <li class="material-card">
+              <a href="{{ url_for('detalle_material', material_id=material.id) }}" class="material-card-link">
+                <div style="position:relative;">
+                    <img src="{{ material.portada_url }}" class="card-img" alt="Portada">
+                    <span style="position:absolute; top:10px; right:10px; background:rgba(0,0,0,0.7); color:#fff; padding:3px 8px; border-radius:4px; font-size:0.7em; font-weight:bold; border:1px solid #58a6ff;">{{ material.materia }}</span>
+                    <span style="position:absolute; bottom:10px; left:10px; background:#a40e26; color:#fff; padding:3px 8px; border-radius:4px; font-size:0.7em; font-weight:bold;">{{ material.__class__.__name__ }}</span>
+                </div>
+                <div class="card-body">
+                  <div class="card-title">{{ material.titulo }}</div>
+                  <div class="card-meta">{{ material.autor }}</div>
+                  <div class="card-footer">
+                     {% if material.esta_disponible %}
+                       <span style="color:#2ecc71">● Disponible ({{ material.unidades_disponibles }})</span>
+                     {% else %}
+                       <span style="color:#d73a49">● Agotado</span>
+                     {% endif %}
+                  </div>
+                </div>
+              </a>
+            </li>
+          {% else %}
+            <p style="grid-column: 1/-1; text-align:center; color:var(--text-muted);">No se encontraron resultados.</p>
+          {% endfor %}
+        </ul>
+      </div>
+
+      <!-- VISTA 2: PRÉSTAMOS -->
+      <div id="vista-prestamos" class="view-section">
+        <h2>Mis Préstamos y Deudas</h2>
+        {% if total_multa > 0 %}
+          <!-- CAMBIO DE MONEDA AQUÍ -->
+          <div class="multa-total">⚠️ Deuda total: S/. {{ "%.2f"|format(total_multa) }}</div>
+          <form action="/pagar-multa" method="POST" class="form-pago">
+            <label>Selecciona método de pago:</label>
+            <select name="metodo_pago"><option value="BCP">BCP (Simulación)</option><option value="Yape">Yape (Simulación)</option></select>
+            <button type="submit" class="boton-pagar">Pagar Todo</button>
+          </form>
+        {% else %}
+          <div class="multa-ok">✅ Estás al día.</div>
+        {% endif %}
+        <ul class="lista-prestamos">
+          {% for p in info_prestamos %}
+            <li class="{% if p.estado_obj.__class__.__name__ == 'PrestamoVencido' %}item-vencido{% elif p.estado_obj.__class__.__name__ == 'PrestamoActivo' %}item-activo{% else %}item-devuelto{% endif %}">
+                <strong>{{ p.titulo }}</strong>
+                {% if p.estado_obj.__class__.__name__ == 'PrestamoVencido' %}
+                    <span class="estado-vencido">VENCIDO (+{{ p.estado_obj.dias_retraso }} días)</span>
+                    <!-- CAMBIO DE MONEDA AQUÍ -->
+                    <span class="multa-item">Multa: S/. {{ "%.2f"|format(p.multa) }}</span>
+                {% elif p.estado_obj.__class__.__name__ == 'PrestamoActivo' %}
+                    <span class="estado-activo">ACTIVO</span>
+                {% else %}
+                    <span class="estado-devuelto">DEVUELTO</span>
+                {% endif %}
+                <span class="fecha">Vence: {{ p.fecha_vencimiento.strftime('%d-%m-%Y') }}</span>
+                {% if p.es_activo and p.es_renovable %}
+                  <form action="{{ url_for('renovar_prestamo', prestamo_id=p.id) }}" method="POST" class="form-renovar">
+                    <button class="boton-renovar">Renovar</button>
+                  </form>
+                {% endif %}
+            </li>
+          {% else %}
+            <li>No hay préstamos activos.</li>
+          {% endfor %}
+        </ul>
+      </div>
+
+      <!-- VISTA 3: ADMIN -->
+      {% if rol == 'Administrativo' %}
+      <div id="vista-admin" class="view-section">
+          <h2>Panel de Administración</h2>
+          <div class="admin-tabs">
+              <button class="admin-tab-button active" onclick="showTab('gestion')">Gestión de Préstamos y Colas</button>
+              <button class="admin-tab-button" onclick="showTab('inventario')">Agregar Inventario</button>
+              <button class="admin-tab-button" onclick="showTab('analiticas')">Analíticas</button>
+          </div>
+          <!-- TAB GESTIÓN -->
+          <div id="tab-gestion" class="admin-tab-content active">
+              <div class="admin-card">
+                  <h3 style="color:#d29922; border-bottom:1px solid var(--border-color); padding-bottom:10px;">⏳ Monitor de Colas de Espera</h3>
+                  {% if admin_data and admin_data.materiales_con_cola %}
+                  <div class="admin-table-container">
+                      <table class="admin-table">
+                          <thead><tr><th>Material</th><th>Total Espera</th><th>Cola</th></tr></thead>
+                          <tbody>
+                              {% for mat in admin_data.materiales_con_cola %}
+                              <tr>
+                                  <td><strong>{{ mat.titulo }}</strong></td>
+                                  <td><span class="status-badge badge-queue">{{ mat.lista_reservas|length }}</span></td>
+                                  <td><ol class="queue-list">{% for u in mat.lista_reservas %}<li>{{ u.nombre }}</li>{% endfor %}</ol></td>
+                              </tr>
+                              {% endfor %}
+                          </tbody>
+                      </table>
+                  </div>
+                  {% else %} <p style="color:var(--text-muted)">No hay colas activas.</p> {% endif %}
+              </div>
+              <div class="admin-card">
+                  <h3 style="color:#58a6ff; border-bottom:1px solid var(--border-color); padding-bottom:10px;">📖 Préstamos Activos Globales</h3>
+                  {% if admin_data and admin_data.global_prestamos %}
+                  <div class="admin-table-container">
+                      <table class="admin-table">
+                          <thead><tr><th>Usuario</th><th>Material</th><th>Vence</th><th>Estado</th><th>Multa</th></tr></thead>
+                          <tbody>
+                              {% for p in admin_data.global_prestamos %}
+                              <tr>
+                                  <td>{{ p.usuario.nombre }}</td><td>{{ p.material.titulo }}</td><td>{{ p.fecha_vencimiento.strftime('%d-%m-%Y') }}</td>
+                                  <td>{% if p.estado_str == 'Activo' %}<span class="status-badge badge-ok">OK</span>{% else %}<span class="status-badge badge-danger">Vencido</span>{% endif %}</td>
+                                  <!-- CAMBIO DE MONEDA AQUÍ -->
+                                  <td>{% if p.multa > 0 %}<span style="color:#ff7b72">S/. {{ "%.2f"|format(p.multa) }}</span>{% else %}-{% endif %}</td>
+                              </tr>
+                              {% endfor %}
+                          </tbody>
+                      </table>
+                  </div>
+                  {% else %} <p style="color:var(--text-muted)">No hay préstamos activos.</p> {% endif %}
+              </div>
+          </div>
+          <!-- TAB INVENTARIO -->
+          <div id="tab-inventario" class="admin-tab-content">
+              <div class="admin-card">
+                   <h3 style="border-bottom:1px solid var(--border-color); padding-bottom:10px;">Agregar Material</h3>
+                   <form action="{{ url_for('admin_agregar_material') }}" method="POST">
+                       <div class="form-admin-grid">
+                           <div><label>Tipo</label><select name="tipo_material" id="tipoSelector" onchange="toggleFields()"><option value="libro">Libro</option><option value="revista">Revista</option><option value="tesis">Tesis</option><option value="digital">Digital</option></select></div>
+                           <div><label>Título</label><input type="text" name="titulo" required></div>
+                           <div><label>Autor</label><input type="text" name="autor" required></div>
+                           <div><label>Materia</label><input type="text" name="materia" required></div>
+                           <div><label>Año</label><input type="number" name="año" value="2024"></div>
+                           <div class="full-width"><label>URL Portada</label><input type="text" name="portada_url"></div>
+                           <div id="campo-libro-editorial" class="specific-field"><label>Editorial</label><input type="text" name="editorial"></div>
+                           <div id="campo-libro-isbn" class="specific-field"><label>ISBN</label><input type="text" name="isbn"></div>
+                           <div id="campo-revista-issn" class="specific-field hidden-field"><label>ISSN</label><input type="text" name="issn"></div>
+                           <div id="campo-revista-edicion" class="specific-field hidden-field"><label>Edición</label><input type="number" name="numero_edicion"></div>
+                           <div id="campo-tesis-uni" class="specific-field hidden-field"><label>Universidad</label><input type="text" name="universidad"></div>
+                           <div id="campo-digital-formato" class="specific-field hidden-field"><label>Formato</label><select name="formato"><option value="PDF">PDF</option><option value="EPUB">EPUB</option></select></div>
+                           <div id="campo-unidades"><label>Unidades</label><input type="number" name="unidades" value="1"></div>
+                       </div>
+                       <button type="submit" class="btn-success">Guardar</button>
+                   </form>
+               </div>
+          </div>
+          <!-- TAB ANALÍTICAS -->
+          <div id="tab-analiticas" class="admin-tab-content">
+               {% if admin_data and admin_data.plot_barras %}
+               <div class="admin-dashboard-container">
+                  <div class="plot-container"><h3>Popularidad</h3><img src="{{ admin_data.plot_barras }}" style="width:100%; border-radius:6px;"></div>
+                  <div class="plot-container"><h3>Estados</h3><img src="{{ admin_data.plot_pie }}" style="width:100%; border-radius:6px;"></div>
+               </div>
+               {% else %}<p>No hay datos gráficos.</p>{% endif %}
+          </div>
+      </div>
+      {% endif %}
+
+      <!-- VISTA 4: PERFIL (INTEGRADO) -->
+      <div id="vista-perfil" class="view-section">
+          <h2>Mi Perfil</h2>
+          <div class="admin-card" style="border-top: 4px solid var(--avatar-red);">
+              <div class="profile-header">
+                  <div class="profile-avatar-large">{{ usuario_actual.nombre[0] }}</div>
+                  <div>
+                      <h1 style="margin:0; font-size:1.8em;">{{ usuario_actual.nombre }}</h1>
+                      <span style="color:#58a6ff; font-weight:bold;">{{ usuario_actual.rol }}</span> • 
+                      <span style="color:var(--text-muted)">{{ usuario_actual.correo }}</span>
+                  </div>
+              </div>
+
+              <div style="display:grid; grid-template-columns: 1fr 1fr; gap:40px;">
+                  <div>
+                      <h3 style="color:#fff; border-bottom:1px solid #333; padding-bottom:10px;">Información Personal</h3>
+                      <div class="detail-row"><span class="detail-label">ID de Usuario:</span> <span class="detail-data">{{ usuario_actual.id }}</span></div>
+                      
+                      {% if usuario_actual.rol == 'Estudiante' %}
+                        <div class="detail-row"><span class="detail-label">Carrera:</span> <span class="detail-data">{{ usuario_actual.carrera }}</span></div>
+                        <div class="detail-row"><span class="detail-label">Semestre:</span> <span class="detail-data">{{ usuario_actual.semestre }}º</span></div>
+                      {% elif usuario_actual.rol == 'Profesor' %}
+                        <div class="detail-row"><span class="detail-label">Departamento:</span> <span class="detail-data">{{ usuario_actual.departamento }}</span></div>
+                        <div class="detail-row"><span class="detail-label">Contrato:</span> <span class="detail-data">{{ usuario_actual.tipo_contrato }}</span></div>
+                      {% elif usuario_actual.rol == 'Administrativo' %}
+                        <div class="detail-row"><span class="detail-label">Área:</span> <span class="detail-data">{{ usuario_actual.area_trabajo }}</span></div>
+                      {% endif %}
+                  </div>
+
+                  <div>
+                      <h3 style="color:#fff; border-bottom:1px solid #333; padding-bottom:10px;">Resumen de Cuenta</h3>
+                      <div class="profile-stats-grid">
+                          <div class="stat-card">
+                              <div class="stat-value">{{ usuario_actual.prestamos|selectattr("estado")|list|length }}</div>
+                              <div class="stat-label">Historial Préstamos</div>
+                          </div>
+                          <div class="stat-card">
+                              <!-- CAMBIO DE MONEDA AQUÍ -->
+                              <div class="stat-value {% if total_multa > 0 %}text-danger-custom{% else %}text-success-custom{% endif %}">
+                                  S/. {{ "%.2f"|format(total_multa) }}
+                              </div>
+                              <div class="stat-label">Deuda Pendiente</div>
+                          </div>
+                      </div>
+                  </div>
+              </div>
+          </div>
+      </div>
+
+      <!-- VISTA 5: SIMULACIÓN -->
+      <div id="vista-tiempo" class="view-section">
+          <h2>Simulación</h2>
+          <div style="background:var(--bg-panel); padding:20px; border-radius:6px; border:1px solid var(--border-color);">
+              <p>Fecha Actual: <strong style="color:#58a6ff">{{ fecha_actual_str }}</strong></p>
+              <form action="{{ url_for('avanzar_tiempo') }}" method="POST" style="display:flex; gap:10px;">
+                  <select name="dias" style="width:auto;"><option value="7">+ 1 Sem</option><option value="15">+ 2 Sem</option></select>
+                  <button class="btn-primary">Avanzar</button>
+              </form>
+              {% if offset_dias > 0 %}
+                 <form action="{{ url_for('reset_tiempo') }}" method="POST" style="margin-top:15px;"><button class="btn-danger">Reset</button></form>
+              {% endif %}
+          </div>
+      </div>
+
+    </main>
+  </div>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+        const params = new URLSearchParams(window.location.search);
+        let view = params.get('view') || 'catalogo';
+        
+        if("{{ palabra }}" !== "" || "{{ autor }}" !== "" || "{{ filtros_activos.tipo }}" !== "" || "{{ filtros_activos.materia }}" !== "") {
+            if(view !== 'admin' && view !== 'perfil') view = 'catalogo';
+        }
+
+        document.querySelectorAll('.view-section').forEach(el => el.style.display = 'none');
+        document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+
+        const section = document.getElementById('vista-' + view);
+        if(section) {
+            section.style.display = 'block';
+            section.style.animation = 'fadeIn 0.3s';
+        }
+        
+        const nav = document.getElementById('nav-' + view);
+        if(nav) nav.classList.add('active');
+
+        const toggleBtn = document.getElementById('sidebarToggle');
+        const sidebar = document.getElementById('mainSidebar');
+        if(localStorage.getItem('sidebarState') === 'collapsed') sidebar.classList.add('collapsed');
+        if(toggleBtn) {
+            toggleBtn.addEventListener('click', () => {
+                sidebar.classList.toggle('collapsed');
+                localStorage.setItem('sidebarState', sidebar.classList.contains('collapsed') ? 'collapsed' : 'expanded');
+            });
+        }
+        
+        if(view === 'admin') toggleFields();
+    });
+
+    function showTab(tabId) {
+        document.querySelectorAll('.admin-tab-content').forEach(el => el.classList.remove('active'));
+        document.querySelectorAll('.admin-tab-button').forEach(el => el.classList.remove('active'));
+        document.getElementById('tab-' + tabId).classList.add('active');
+        
+        const btns = document.querySelectorAll('.admin-tab-button');
+        if(tabId === 'gestion') btns[0].classList.add('active');
+        if(tabId === 'inventario') btns[1].classList.add('active');
+        if(tabId === 'analiticas') btns[2].classList.add('active');
+    }
+
+    function toggleFields() {
+        const selector = document.getElementById('tipoSelector');
+        if(!selector) return;
+        const tipo = selector.value;
+        document.querySelectorAll('.specific-field').forEach(el => el.classList.add('hidden-field'));
+        if(tipo === 'libro') {
+            document.getElementById('campo-libro-editorial').classList.remove('hidden-field');
+            document.getElementById('campo-libro-isbn').classList.remove('hidden-field');
+            document.getElementById('campo-unidades').classList.remove('hidden-field');
+        } else if(tipo === 'revista') {
+            document.getElementById('campo-revista-issn').classList.remove('hidden-field');
+            document.getElementById('campo-revista-edicion').classList.remove('hidden-field');
+            document.getElementById('campo-unidades').classList.remove('hidden-field');
+        } else if(tipo === 'tesis') {
+            document.getElementById('campo-tesis-uni').classList.remove('hidden-field');
+            document.getElementById('campo-unidades').classList.remove('hidden-field');
+        } else if(tipo === 'digital') {
+            document.getElementById('campo-digital-formato').classList.remove('hidden-field');
+            document.getElementById('campo-unidades').classList.add('hidden-field'); 
+        }
+    }
+  </script>
 </body>
 </html>

@@ -5,54 +5,71 @@
   <title>Mi Perfil</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
-<body class="detalle-page">
-
-  <!-- Barra de Usuario -->
-  <div class="user-bar">
-    <div class="user-info">
-      <span>¡Hola, <strong>{{ session.nombre }}</strong>! (Rol: {{ session.rol }})</span>
-    </div>
-    <div class="user-actions">
-      <a href="{{ url_for('perfil') }}" class="perfil-button">Mi Perfil</a>
-      <a href="{{ url_for('logout') }}" class="logout-button">Cerrar Sesión</a>
-    </div>
-  </div>
-
-  <a href="{{ url_for('home') }}" class="back-button">&larr; Volver al catálogo</a>
-
-  <div class="perfil-container">
-    <h2>Mi Perfil</h2>
+<body>
+  <div class="app-wrapper">
     
-    <div class="perfil-card">
-      <h3>{{ usuario.nombre }}</h3>
-      
-      <div class="perfil-info">
-        <span><strong>ID de Usuario:</strong> {{ usuario.id }}</span>
-        <span><strong>Correo:</strong> {{ usuario.correo }}</span>
-        <span><strong>Rol:</strong> {{ usuario.rol }}</span>
+    <nav class="sidebar">
+      <div class="sidebar-header">
+        <span class="brand-icon">🏛️</span>
+        <span class="brand-title">INTRALU</span>
+        <span class="menu-icon">≡</span>
       </div>
 
-      <!-- Detalles específicos del Rol -->
-      <div class="perfil-detalles-rol">
-        {% if usuario.rol == 'Estudiante' %}
-          <h4>Detalles de Estudiante</h4>
-          <span><strong>Carrera:</strong> {{ usuario.carrera }}</span>
-          <span><strong>Semestre:</strong> {{ usuario.semestre }}</span>
-        
-        {% elif usuario.rol == 'Profesor' %}
-          <h4>Detalles de Profesor</h4>
-          <span><strong>Departamento:</strong> {{ usuario.departamento }}</span>
-          <span><strong>Contrato:</strong> {{ usuario.tipo_contrato }}</span>
+      <ul class="nav-links">
+        <a href="{{ url_for('home', view='catalogo') }}" class="nav-item">
+          <div class="nav-icon">🔍</div> <span>Catálogo</span>
+        </a>
+        <a href="{{ url_for('home', view='prestamos') }}" class="nav-item">
+          <div class="nav-icon">📚</div> <span>Préstamos</span>
+        </a>
+      </ul>
 
-        {% elif usuario.rol == 'Administrativo' %}
-          <h4>Detalles de Administrativo</h4>
-          <span><strong>Área:</strong> {{ usuario.area_trabajo }}</span>
-        
-        {% endif %}
+      <div class="sidebar-footer">
+        <div class="user-profile-card">
+            <div class="avatar-circle">{{ session.nombre[0] }}</div>
+            <div class="user-details">
+                <span class="user-name">{{ session.nombre.split(' ')[0] }}</span>
+                <span class="user-role">{{ session.rol }}</span>
+            </div>
+        </div>
+        <a href="{{ url_for('perfil') }}" class="footer-link link-profile" style="color:#fff; background:rgba(255,255,255,0.05)">
+            <div class="footer-icon">👤</div> <span>Mi Perfil Completo</span>
+        </a>
+        <a href="{{ url_for('logout') }}" class="footer-link link-logout">
+            <div class="footer-icon">🚪</div> <span>Cerrar Sesión</span>
+        </a>
       </div>
-      
-    </div>
+    </nav>
+
+    <main class="main-content">
+       <a href="{{ url_for('home') }}" class="btn-secondary" style="margin-bottom:20px; display:inline-block;">&larr; Volver</a>
+       
+       <div style="max-width:800px; margin:0 auto; background:var(--bg-panel); border:1px solid var(--border-color); border-radius:8px; padding:30px;">
+           <div style="display:flex; align-items:center; gap:20px; margin-bottom:30px; border-bottom:1px solid var(--border-color); padding-bottom:20px;">
+               <div style="width:60px; height:60px; background:#a40e26; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:1.5em; font-weight:bold; color:#fff;">
+                   {{ usuario.nombre[0] }}
+               </div>
+               <div>
+                   <h2 style="margin:0; border:none;">{{ usuario.nombre }}</h2>
+                   <span style="color:var(--text-muted)">{{ usuario.rol }}</span>
+               </div>
+           </div>
+           
+           <div style="display:grid; gap:15px;">
+               <div style="display:flex; justify-content:space-between; border-bottom:1px solid #333; padding-bottom:10px;">
+                   <span>Correo:</span> <strong style="color:#fff">{{ usuario.correo }}</strong>
+               </div>
+               <div style="display:flex; justify-content:space-between; border-bottom:1px solid #333; padding-bottom:10px;">
+                   <span>ID:</span> <strong style="color:#fff">{{ usuario.id }}</strong>
+               </div>
+               {% if usuario.rol == 'Estudiante' %}
+               <div style="display:flex; justify-content:space-between; border-bottom:1px solid #333; padding-bottom:10px;">
+                   <span>Carrera:</span> <strong style="color:#fff">{{ usuario.carrera }}</strong>
+               </div>
+               {% endif %}
+           </div>
+       </div>
+    </main>
   </div>
-
 </body>
 </html>

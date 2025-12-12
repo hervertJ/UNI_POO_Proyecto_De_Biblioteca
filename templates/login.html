@@ -2,59 +2,64 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8">
-  <title>Login - Gestor Biblioteca</title>
+  <title>Login | Intralu</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body class="login-page">
-
-  <!-- Loader Eliminado -->
 
   <div class="login-container">
     
     <div class="login-content">
 
+      <!-- COLUMNA IZQUIERDA: FORMULARIO -->
       <div class="login-form-column">
-        <h1>¡Bienvenido de vuelta!</h1>
-        <p>Inicia sesión para acceder al gestor.</p>
+        <h1>¡Bienvenido!</h1>
+        <p>Ingresa tus credenciales para acceder.</p>
 
         <form action="/login" method="post">
           
           <div class="form-group">
-            <label for="correo">Correo Electrónico:</label>
+            <label for="correo">Correo Institucional</label>
             <input type="text" id="correo" name="correo" placeholder="ej: ana@uni.edu" required>
           </div>
 
           <div class="form-group">
-            <label for="password">Contraseña:</label>
-            <input type="password" id="password" name="password" required placeholder="Introduce tu contraseña">
+            <label for="password">Contraseña</label>
+            <input type="password" id="password" name="password" placeholder="••••••••" required>
           </div>
           
-          <a href="#" class="form-link">¿Olvidaste tu contraseña?</a>
+          <div style="text-align: right; margin-bottom: 20px;">
+             <a href="#" class="form-link">¿Olvidaste tu contraseña?</a>
+          </div>
 
           {% with messages = get_flashed_messages() %}
             {% if messages %}
               <div class="login-error">
-                {{ messages[0] }}
+                ⚠️ {{ messages[0] }}
               </div>
             {% endif %}
           {% endwith %}
 
-          <button type="submit">Ingresar</button>
+          <button type="submit" class="btn-primary" style="width:100%; padding:12px; font-size:1.1em;">Iniciar Sesión</button>
 
           <div class="form-register">
-            ¿Necesitas una cuenta? <a href="#" class="form-link">Regístrate</a>
+            ¿No tienes cuenta? <a href="#" class="form-link">Solicitar acceso</a>
           </div>
         </form>
       </div>
 
+      <!-- COLUMNA DERECHA: INFORMACIÓN -->
       <div class="login-info-column">
-        <h2>Gestor de Biblioteca</h2>
-        <p>Plataforma centralizada para la administración de materiales y préstamos universitarios.</p>
+        <div style="font-size: 4em; margin-bottom: 10px;">🏛️</div>
+        <h2>INTRALU</h2>
+        <p>
+          Sistema de gestión bibliotecaria universitaria.<br>
+          Accede al catálogo, gestiona tus préstamos y consulta material digital desde cualquier lugar.
+        </p>
       </div>
 
     </div>
   </div>
 
-  <!-- Script del Loader Eliminado -->
 </body>
 </html>
