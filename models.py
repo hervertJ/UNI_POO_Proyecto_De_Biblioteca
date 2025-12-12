@@ -25,6 +25,33 @@ class Persona(ABC):
         return self._nombre
 
 
+# --- NUEVA CLASE: RESEÑA ---
+class Resena:
+    def __init__(
+        self, usuario: "Usuario", calificacion: int, comentario: str, fecha: date
+    ):
+        self._usuario = usuario
+        self._calificacion = max(0, min(5, int(calificacion)))  # Asegurar rango 0-5
+        self._comentario = comentario
+        self._fecha = fecha
+
+    @property
+    def usuario(self):
+        return self._usuario
+
+    @property
+    def calificacion(self):
+        return self._calificacion
+
+    @property
+    def comentario(self):
+        return self._comentario
+
+    @property
+    def fecha(self):
+        return self._fecha
+
+
 class MaterialBibliografico(ABC):
     def __init__(
         self,
@@ -34,6 +61,7 @@ class MaterialBibliografico(ABC):
         año_publicacion: int,
         descripcion: str,
         portada_url: str,
+        materia: str,
         total_unidades: int = 1,
     ):
         self._id = id
@@ -42,17 +70,18 @@ class MaterialBibliografico(ABC):
         self._año_publicacion = año_publicacion
         self._descripcion = descripcion
         self._portada_url = portada_url
+        self._materia = materia
 
         self._total_unidades = max(1, total_unidades)
         self._unidades_prestadas = 0
 
         self._lista_reservas: List[Usuario] = []
+        self._resenas: List[Resena] = []  # NUEVO: Lista de reseñas
 
     @abstractmethod
     def calcular_dias_prestamo(self, usuario: "Usuario") -> int:
         pass
 
-    # --- CORRECCIÓN ---
     @abstractmethod
     def es_renovable(self) -> bool:
         pass
@@ -72,6 +101,27 @@ class MaterialBibliografico(ABC):
 
     def esta_reservado_por(self, usuario: "Usuario") -> bool:
         return usuario in self._lista_reservas
+
+    def obtener_posicion_reserva(self, usuario: "Usuario") -> int:
+        try:
+            return self._lista_reservas.index(usuario) + 1
+        except ValueError:
+            return 0
+
+    # --- NUEVOS MÉTODOS: RESEÑAS ---
+    def agregar_resena(self, resena: Resena):
+        self._resenas.append(resena)
+
+    @property
+    def resenas(self) -> List[Resena]:
+        return self._resenas
+
+    @property
+    def promedio_calificacion(self) -> float:
+        if not self._resenas:
+            return 0.0
+        total = sum(r.calificacion for r in self._resenas)
+        return round(total / len(self._resenas), 1)
 
     # --- Propiedades ---
     @property
@@ -97,6 +147,14 @@ class MaterialBibliografico(ABC):
     @property
     def portada_url(self):
         return self._portada_url
+
+    @property
+    def materia(self):
+        return self._materia
+
+    @property
+    def lista_reservas(self):
+        return self._lista_reservas
 
     # --- Propiedades de Stock ---
     @property
@@ -126,9 +184,7 @@ class EstadoPrestamo(ABC):
         pass
 
     @abstractmethod
-    def calcular_multa(
-        self, fecha_actual: date
-    ) -> float:  # MODIFICADO: Acepta la fecha actual
+    def calcular_multa(self, fecha_actual: date) -> float:
         pass
 
     @property
@@ -137,8 +193,6 @@ class EstadoPrestamo(ABC):
 
 
 # === JERARQUÍA DE USUARIOS ===
-
-
 class Usuario(Persona):
     def __init__(self, id: int, nombre: str, correo: str, rol: str):
         super().__init__(id, nombre, correo)
@@ -156,16 +210,13 @@ class Usuario(Persona):
 
     def registrar(self):
         if self.validar_datos():
-            print(f"Usuario {self._nombre} registrado exitosamente")
             return True
         return False
 
     def agregar_prestamo(self, prestamo: "Prestamo"):
         self._prestamos.append(prestamo)
 
-    def tiene_multas(
-        self, fecha_actual: date
-    ) -> bool:  # MODIFICADO: Acepta la fecha actual
+    def tiene_multas(self, fecha_actual: date) -> bool:
         for p in self._prestamos:
             if p.calcular_multa(fecha_actual) > 0:
                 return True
@@ -195,7 +246,6 @@ class Estudiante(Usuario):
         self._semestre = semestre
         self._limite_prestamos = 5
 
-    # --- NUEVO: Propiedades para Perfil ---
     @property
     def carrera(self):
         return self._carrera
@@ -214,7 +264,6 @@ class Profesor(Usuario):
         self._tipo_contrato = tipo_contrato
         self._limite_prestamos = 20
 
-    # --- NUEVO: Propiedades para Perfil ---
     @property
     def departamento(self):
         return self._departamento
@@ -230,14 +279,14 @@ class Administrativo(Usuario):
         self._area_trabajo = area_trabajo
         self._limite_prestamos = 999
 
-    # --- NUEVO: Propiedades para Perfil ---
     @property
     def area_trabajo(self):
         return self._area_trabajo
 
 
 # === JERARQUÍA DE MATERIALES BIBLIOGRÁFICOS ===
-# (Sin cambios en esta sección: Libro, Revista, Tesis, MaterialDigital)
+
+
 class Libro(MaterialBibliografico):
     def __init__(
         self,
@@ -248,15 +297,21 @@ class Libro(MaterialBibliografico):
         descripcion: str,
         portada_url: str,
         editorial: str,
-        categoria: str,
+        materia: str,
         total_unidades: int = 1,
         isbn: str = "",
     ):
         super().__init__(
-            id, titulo, autor, año_publicacion, descripcion, portada_url, total_unidades
+            id,
+            titulo,
+            autor,
+            año_publicacion,
+            descripcion,
+            portada_url,
+            materia,
+            total_unidades,
         )
         self._editorial = editorial
-        self._categoria = categoria
         self._isbn = isbn
 
     @property
@@ -287,11 +342,19 @@ class Revista(MaterialBibliografico):
         descripcion: str,
         portada_url: str,
         numero_edicion: int,
+        materia: str,
         total_unidades: int = 1,
         issn: str = "",
     ):
         super().__init__(
-            id, titulo, autor, año_publicacion, descripcion, portada_url, total_unidades
+            id,
+            titulo,
+            autor,
+            año_publicacion,
+            descripcion,
+            portada_url,
+            materia,
+            total_unidades,
         )
         self._numero_edicion = numero_edicion
         self._issn = issn
@@ -321,10 +384,18 @@ class Tesis(MaterialBibliografico):
         descripcion: str,
         portada_url: str,
         universidad: str,
+        materia: str,
         total_unidades: int = 1,
     ):
         super().__init__(
-            id, titulo, autor, año_defensa, descripcion, portada_url, total_unidades
+            id,
+            titulo,
+            autor,
+            año_defensa,
+            descripcion,
+            portada_url,
+            materia,
+            total_unidades,
         )
         self._universidad = universidad
 
@@ -352,6 +423,7 @@ class MaterialDigital(MaterialBibliografico):
         descripcion: str,
         portada_url: str,
         formato: str,
+        materia: str,
     ):
         super().__init__(
             id,
@@ -360,6 +432,7 @@ class MaterialDigital(MaterialBibliografico):
             año_publicacion,
             descripcion,
             portada_url,
+            materia,
             total_unidades=1,
         )
         self._formato = formato
@@ -374,7 +447,6 @@ class MaterialDigital(MaterialBibliografico):
     def es_renovable(self) -> bool:
         return False
 
-    # Sobreescribimos métodos de stock/reserva
     @property
     def total_unidades(self) -> int:
         return 1
@@ -399,25 +471,19 @@ class MaterialDigital(MaterialBibliografico):
 
 
 # === ESTADOS DE PRÉSTAMO ===
-
-
 class Prestamo:
-    # MODIFICADO: Acepta la fecha de inicio en el constructor
     def __init__(
         self, usuario: Usuario, material: MaterialBibliografico, fecha_inicio: date
     ):
         self._id = random.randint(10000, 99999)
         self._usuario = usuario
         self._material = material
-        self._fecha_prestamo = fecha_inicio  # Usamos la fecha de inicio proporcionada
-
+        self._fecha_prestamo = fecha_inicio
         dias_limite = material.calcular_dias_prestamo(usuario)
         self._fecha_vencimiento = self._fecha_prestamo + timedelta(days=dias_limite)
         self._estado: EstadoPrestamo = PrestamoActivo(self)
-
         self._veces_renovado = 0
         self._limite_renovaciones = 1 if material.es_renovable() else 0
-
         if not isinstance(material, MaterialDigital):
             self._material._unidades_prestadas += 1
 
@@ -427,32 +493,29 @@ class Prestamo:
     def procesar_prestamo(self):
         self._estado.procesar_prestamo()
 
-    # MODIFICADO: Pasa la fecha actual al estado
     def calcular_multa(self, fecha_actual: date) -> float:
         return self._estado.calcular_multa(fecha_actual)
 
     def realizar_renovacion(self) -> (bool, str):
         if not isinstance(self._estado, PrestamoActivo):
             return (False, "No se puede renovar un préstamo vencido o devuelto.")
-
         if self._material.tiene_reservas():
             return (
                 False,
                 "No se puede renovar; hay otros usuarios esperando en reserva.",
             )
-
         if self._veces_renovado >= self._limite_renovaciones:
             return (
                 False,
                 f"Has alcanzado el límite de {self._limite_renovaciones} renovaciones.",
             )
-
         dias_extra = self._material.calcular_dias_prestamo(self._usuario)
         self._fecha_vencimiento += timedelta(days=dias_extra)
         self._veces_renovado += 1
-
-        msg = f"Renovación exitosa. Nueva fecha de vencimiento: {self._fecha_vencimiento.strftime('%d-%m-%Y')}."
-        return (True, msg)
+        return (
+            True,
+            f"Renovación exitosa. Vence: {self._fecha_vencimiento.strftime('%d-%m-%Y')}.",
+        )
 
     @property
     def id(self):
@@ -481,9 +544,8 @@ class Prestamo:
 
 class PrestamoActivo(EstadoPrestamo):
     def procesar_prestamo(self):
-        print("Préstamo activo - En curso")
+        pass
 
-    # MODIFICADO: Acepta y usa la fecha actual
     def calcular_multa(self, fecha_actual: date) -> float:
         if fecha_actual > self._prestamo.fecha_vencimiento:
             dias_retraso = (fecha_actual - self._prestamo.fecha_vencimiento).days
@@ -501,9 +563,8 @@ class PrestamoVencido(EstadoPrestamo):
         return self._dias_retraso
 
     def procesar_prestamo(self):
-        print(f"Préstamo vencido - {self._dias_retraso} días de retraso")
+        pass
 
-    # MODIFICADO: Acepta la fecha actual (aunque no la usa, es por consistencia)
     def calcular_multa(self, fecha_actual: date) -> float:
         return self._dias_retraso * 5.0
 
@@ -512,22 +573,17 @@ class PrestamoDevuelto(EstadoPrestamo):
     def __init__(self, prestamo: Prestamo):
         super().__init__(prestamo)
         material = self._prestamo.material
-
         if isinstance(material, MaterialDigital):
             return
-
         if material.tiene_reservas():
             siguiente_usuario = material.obtener_siguiente_reserva()
-            msg = f"'{material.titulo}' devuelto. Notificando a {siguiente_usuario.nombre} para que lo recoja."
-            self._notificacion = msg
-            print(msg)
+            self._notificacion = f"ATENCIÓN: '{material.titulo}' devuelto. Ha sido asignado a {siguiente_usuario.nombre} (siguiente en cola)."
         else:
             material._unidades_prestadas = max(0, material._unidades_prestadas - 1)
 
     def procesar_prestamo(self):
-        print("Préstamo devuelto - Procesado")
+        pass
 
-    # MODIFICADO: Acepta la fecha actual
     def calcular_multa(self, fecha_actual: date) -> float:
         return 0.0
 
@@ -543,8 +599,9 @@ class Multa:
         return self._dias_retraso * 5.0
 
     def generar_multa(self):
+        # CAMBIO DE MONEDA AQUÍ
         print(
-            f"Multa generada: ${self._monto} por {self._dias_retraso} días de retraso"
+            f"Multa generada: S/.{self._monto} por {self._dias_retraso} días de retraso"
         )
 
     @property
@@ -564,7 +621,7 @@ class Deudor(Usuario):
         print("ALERTA: Usuario con deudas pendientes")
 
 
-# === SISTEMA CENTRAL ===
+# === SISTEMA CENTRAL (RESTAURADO) ===
 
 
 class Catalogo:
@@ -581,17 +638,24 @@ class Catalogo:
             return True
         return False
 
-    # --- MÉTODO DE BÚSQUEDA ACTUALIZADO ---
-    def buscar(self, titulo: str = "", autor: str = "") -> List[MaterialBibliografico]:
-        """Busca materiales por título y/o autor."""
+    def buscar(
+        self,
+        titulo: str = "",
+        autor: str = "",
+        materia: str = "",
+        tipo_material: str = "",
+    ) -> List[MaterialBibliografico]:
         resultados = self._materiales
-
         if titulo:
             resultados = [m for m in resultados if titulo.lower() in m.titulo.lower()]
-
         if autor:
             resultados = [m for m in resultados if autor.lower() in m.autor.lower()]
-
+        if materia and materia != "Todas":
+            resultados = [m for m in resultados if materia.lower() == m.materia.lower()]
+        if tipo_material and tipo_material != "Todos":
+            resultados = [
+                m for m in resultados if m.__class__.__name__ == tipo_material
+            ]
         return resultados
 
     def buscar_por_id(self, material_id: int) -> MaterialBibliografico | None:
@@ -599,6 +663,10 @@ class Catalogo:
             if m.id == material_id:
                 return m
         return None
+
+    def obtener_materias_unicas(self) -> List[str]:
+        materias = set(m.materia for m in self._materiales)
+        return sorted(list(materias))
 
 
 class Biblioteca:
@@ -663,25 +731,6 @@ class Biblioteca:
         if not material.esta_disponible:
             return (False, "No hay unidades disponibles de este material.")
 
-        # MODIFICADO: 'tiene_multas' ahora necesita la fecha actual.
-        # PERO, esta función se llama desde app.py, que no pasa la fecha.
-        # Para evitar una refactorización masiva, asumiremos que esta verificación
-        # se basa en la FECHA REAL. La lógica principal de multas en
-        # _obtener_datos_prestamos SÍ usa la fecha simulada.
-        # Si quisiéramos ser 100% precisos, necesitaríamos pasar 'fecha_actual'
-        # a esta función también.
-
-        # Simulación Simple: Lo dejamos como está, pero no funcionará
-        # con 'tiene_multas' simulado.
-
-        # Simulación Compleja:
-        # def verificar_aptitud_prestamo(self, usuario: Usuario, material: MaterialBibliografico, fecha_actual: date) -> (bool, str):
-        # ...
-        # if usuario.tiene_multas(fecha_actual):
-        #
-        # Por ahora, lo dejaremos sin la fecha para no romper la app.
-        # La multa principal se seguirá mostrando correctamente en el home.
-
         prestamos_activos = [
             p for p in usuario.prestamos if isinstance(p.estado, PrestamoActivo)
         ]
@@ -693,7 +742,6 @@ class Biblioteca:
 
         return (True, "")
 
-    # MODIFICADO: Acepta la fecha de inicio
     def realizar_prestamo(
         self, usuario: Usuario, material: MaterialBibliografico, fecha_inicio: date
     ) -> (bool, str):
@@ -736,6 +784,5 @@ class Biblioteca:
         material.agregar_reserva(usuario)
         return (
             True,
-            f"¡Reserva exitosa! Se te notificará (simulado) cuando '{material.titulo}' esté disponible.",
+            f"¡Reserva exitosa! Se te notificará cuando '{material.titulo}' esté disponible.",
         )
-
